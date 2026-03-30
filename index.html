@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jay Home Management</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #F0ECF5; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'DM Sans', sans-serif; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeInSimple {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.85; }
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes confettiDrop {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(120px) rotate(720deg); opacity: 0; }
+  }
+
+  @keyframes checkDraw {
+    0% { stroke-dashoffset: 24; }
+    100% { stroke-dashoffset: 0; }
+  }
+
+  @keyframes countUp {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .phone-wrap {
+    width: 390px;
+    height: 844px;
+    border-radius: 48px;
+    overflow: hidden;
+    box-shadow: 0 0 0 12px #1a1a2e, 0 0 0 14px #2d2d44, 0 25px 60px rgba(0,0,0,0.4);
+    position: relative;
+    background: #FFFFFF;
+  }
+
+  .phone-wrap::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 126px;
+    height: 36px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 100;
+  }
+
+  .phone-wrap .status-bar-ios {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 54px;
+    padding: 16px 28px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 90;
+    color: #1a1a2e;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  #root { height: 100%; }
+  #root > div { padding-top: 54px !important; }
+
+  .badge-pulse { animation: pulse 1.5s ease-in-out infinite; }
+  .spinner { animation: spin 1s linear infinite; }
+
+  @keyframes toastSlideIn {
+    0% { transform: translateY(-100%); opacity: 0; }
+    10% { transform: translateY(0); opacity: 1; }
+    90% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-100%); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="phone-wrap">
+  <div class="status-bar-ios">
+    <span>9:41</span>
+    <span style="font-size: 13px; letter-spacing: 1px;">&#9679;&#9679;&#9679;&#9679;</span>
+  </div>
+  <div id="root"></div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+/* ── Design Tokens (JustMoveIn) ── */
+const t = {
+  bg: "#FFFFFF",
+  bgSoft: "#F8F6FB",
+  bgCard: "#FFFFFF",
+  purple: "#5046E5",
+  purpleLight: "#7C6FF0",
+  purpleBg: "#F0EDFF",
+  purpleBorder: "#D6D0F7",
+  coral: "#E8573A",
+  coralLight: "#FCEEE9",
+  coralBorder: "#F5C4B5",
+  amber: "#F5A623",
+  amberBg: "#FFF8EC",
+  amberBorder: "#FADEA3",
+  green: "#22C55E",
+  greenBg: "#ECFDF5",
+  greenBorder: "#A7F3D0",
+  red: "#EF4444",
+  redBg: "#FEF2F2",
+  lavender: "#C4B5F5",
+  textPrimary: "#1A1A2E",
+  textSecondary: "#6B7280",
+  textMuted: "#9CA3AF",
+  border: "#E5E7EB",
+  borderLight: "#F3F4F6",
+};
+
+/* ── Data ── */
+const services = [
+  { id: "energy", name: "Energy", provider: "Octopus Energy", monthly: 142, status: "action", statusLabel: "Renews in 23 days", icon: "\u26A1", saving: 38, contractEnd: "20 Apr 2025", usage: "Avg 287 kWh/mo", trend: "up", detail: "Your fixed-rate tariff ends soon. Octopus has a new Agile tariff that could save you \u00A338/month based on your usage pattern.", category: "Utilities" },
+  { id: "broadband", name: "Broadband", provider: "BT Full Fibre", monthly: 49, status: "ok", statusLabel: "12 months remaining", icon: "\uD83D\uDCE1", saving: null, contractEnd: "Mar 2026", usage: "Avg 340 GB/mo", trend: "stable", detail: "Your contract is mid-term. No action needed. Jay will alert you 60 days before renewal with market comparisons.", category: "Utilities" },
+  { id: "insurance", name: "Home Insurance", provider: "Direct Line", monthly: 28, status: "ok", statusLabel: "Auto-renews Aug 2025", icon: "\uD83C\uDFE0", saving: null, contractEnd: "Aug 2025", usage: "Buildings + Contents", trend: "stable", detail: "Jay will compare the market 8 weeks before renewal and flag if Direct Line\u2019s auto-renewal price is uncompetitive.", category: "Protection" },
+  { id: "water", name: "Water", provider: "Thames Water", monthly: 34, status: "ok", statusLabel: "Regulated \u2014 no action", icon: "\uD83D\uDCA7", saving: null, contractEnd: "\u2014", usage: "Avg 145 L/day", trend: "stable", detail: "Water is a regulated utility \u2014 you can\u2019t switch. Jay tracks your usage and flags anomalies that might indicate a leak.", category: "Utilities" },
+  { id: "council", name: "Council Tax", provider: "London Borough of Hackney", monthly: 189, status: "info", statusLabel: "Band D \u2014 check eligibility", icon: "\uD83C\uDFDB\uFE0F", saving: 19, contractEnd: "\u2014", usage: "Band D", trend: "stable", detail: "Jay found a single-person discount that may apply to your household. A 25% reduction would save you \u00A319/month.", category: "Local" },
+  { id: "subscriptions", name: "Subscriptions", provider: "7 active", monthly: 63, status: "info", statusLabel: "2 unused detected", icon: "\uD83D\uDCF1", saving: 22, contractEnd: "\u2014", usage: "Netflix, Spotify, Sky, Adobe +3", trend: "up", detail: "Jay detected 2 subscriptions with no usage in 60+ days: Adobe Creative Cloud (\u00A317/mo) and Sky Sports (\u00A35/mo).", category: "Entertainment" },
+  { id: "tvlicense", name: "TV Licence", provider: "TV Licensing", monthly: 14, status: "ok", statusLabel: "Paid annually", icon: "\uD83D\uDCFA", saving: null, contractEnd: "Jan 2026", usage: "Standard", trend: "stable", detail: "Your TV licence is paid annually and up to date. Jay will remind you 30 days before renewal.", category: "Entertainment" },
+];
+
+const jayMessages = [
+  { id: 1, type: "proactive", message: "Your Octopus Energy contract ends in 23 days. Based on your usage, switching to their Agile tariff saves \u00A338/month. Want me to prepare a switch?", time: "2 min ago", action: "Review switch", targetService: "energy" },
+  { id: 2, type: "proactive", message: "I noticed you may qualify for a 25% council tax single-person discount. That\u2019s \u00A319/month back. I can check your eligibility now.", time: "Yesterday", action: "Check eligibility", targetService: "council" },
+  { id: 3, type: "proactive", message: "Adobe Creative Cloud hasn\u2019t been used in 68 days. Cancelling saves \u00A317/month. I can handle the cancellation if you\u2019d like.", time: "2 days ago", action: "Cancel subscription", targetService: "subscriptions" },
+];
+
+/* ── Energy switch flow data ── */
+const tariffComparison = [
+  { name: "Octopus Agile", provider: "Octopus", monthly: 104, saving: 38, rating: 4.6, green: true, recommended: true },
+  { name: "Ovo Next-Gen", provider: "OVO Energy", monthly: 112, saving: 30, rating: 4.3, green: true, recommended: false },
+  { name: "EDF Simply Fixed", provider: "EDF", monthly: 118, saving: 24, rating: 4.1, green: false, recommended: false },
+];
+
+const switchSteps = [
+  { label: "Reviewing your usage data", detail: "287 kWh average analysed" },
+  { label: "Notifying Octopus Energy", detail: "New tariff confirmed" },
+  { label: "Scheduling switch date", detail: "20 April \u2014 no gap in supply" },
+  { label: "Setting up new billing", detail: "Direct debit updated" },
+];
+
+const totalMonthly = services.reduce((s, x) => s + x.monthly, 0);
+const totalSaving = services.reduce((s, x) => s + (x.saving || 0), 0);
+const actionCount = services.filter(x => x.status === "action" || x.status === "info").length;
+
+/* ── Components ── */
+function StatusBadge({ status }) {
+  const config = {
+    ok: { bg: t.greenBg, color: t.green, border: t.greenBorder, label: "On track" },
+    action: { bg: t.redBg, color: t.red, border: t.coralBorder, label: "Action needed" },
+    info: { bg: t.amberBg, color: t.amber, border: t.amberBorder, label: "Review" },
+  };
+  const c = config[status] || config.ok;
+  return (
+    <span style={{ background: c.bg, color: c.color, border: `1px solid ${c.border}`, borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{c.label}</span>
+  );
+}
+
+function JayBadge({ size }) {
+  const s = size === "sm" ? 11 : size === "lg" ? 16 : 13;
+  return (
+    <span style={{ fontSize: s, fontWeight: 700 }}>
+      <span style={{ color: t.purple }}>Jay</span>
+      <span style={{ color: t.coral }}>{"\u2728"}</span>
+    </span>
+  );
+}
+
+function JayAvatar({ size }) {
+  const sz = size || 36;
+  return (
+    <div style={{ width: sz, height: sz, borderRadius: "50%", background: `linear-gradient(135deg, ${t.purple}, ${t.purpleLight})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: sz * 0.4, color: "#fff", flexShrink: 0, boxShadow: `0 2px 8px ${t.purple}33` }}>
+      {"\u2728"}
+    </div>
+  );
+}
+
+function Confetti() {
+  const colors = [t.purple, t.coral, t.amber, t.green, t.lavender, "#FFD700"];
+  const pieces = Array.from({ length: 30 }, (_, i) => ({
+    left: 30 + Math.random() * 40,
+    delay: Math.random() * 0.6,
+    color: colors[i % colors.length],
+    size: 4 + Math.random() * 6,
+    rotation: Math.random() * 360,
+  }));
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none", zIndex: 200 }}>
+      {pieces.map((p, i) => (
+        <div key={i} style={{
+          position: "absolute",
+          left: `${p.left}%`,
+          top: "25%",
+          width: p.size,
+          height: p.size,
+          borderRadius: i % 3 === 0 ? "50%" : "2px",
+          background: p.color,
+          animation: `confettiDrop 1.2s ease-out ${p.delay}s forwards`,
+          transform: `rotate(${p.rotation}deg)`,
+        }} />
+      ))}
+    </div>
+  );
+}
+
+function CheckMark() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="22" fill={t.greenBg} stroke={t.green} strokeWidth="2" />
+      <path d="M14 24 L21 31 L34 18" fill="none" stroke={t.green} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+        style={{ strokeDasharray: 24, animation: "checkDraw 0.6s ease-out forwards" }} />
+    </svg>
+  );
+}
+
+/* ── Main App ── */
+function App() {
+  const [booted, setBooted] = useState(false);
+  const [screen, setScreen] = useState("dashboard");
+  const [selectedService, setSelectedService] = useState(null);
+  const [chatInput, setChatInput] = useState("");
+  const [chatHistory, setChatHistory] = useState([
+    { role: "jay", text: "Welcome to your dashboard \uD83D\uDC4B I'm Jay, your home management companion. How can I help?" },
+  ]);
+  const [dismissed, setDismissed] = useState([]);
+  const [switchedServices, setSwitchedServices] = useState([]);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+
+  /* Energy switch flow state */
+  const [switchFlow, setSwitchFlow] = useState(null);
+  const [switchStep, setSwitchStep] = useState(0);
+  const [selectedTariff, setSelectedTariff] = useState(null);
+
+  /* Council tax + subscriptions flow state */
+  const [serviceFlow, setServiceFlow] = useState(null); // null, "council-check", "council-applying", "council-done", "subs-audit", "subs-cancelling", "subs-done"
+  const [subFlowStep, setSubFlowStep] = useState(0);
+
+  const [settingsState, setSettingsState] = useState({
+    "Notifications": "On",
+    "Auto-switching": "Off",
+    "Budget alerts": "\u00A3600/mo",
+    "Data sharing": "Essential only",
+  });
+
+  const chatRef = useRef(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setBooted(true);
+      setTimeout(() => setShowToast(true), 600);
+      setTimeout(() => setShowToast(false), 5000);
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [chatHistory]);
+
+  const activeAlerts = jayMessages.filter(m => !dismissed.includes(m.id));
+
+  const goService = (id) => {
+    const s = services.find(x => x.id === id);
+    if (s) { setSelectedService(s); setScreen("service"); setServiceFlow(null); setSubFlowStep(0); }
+  };
+
+  const startSwitchFlow = () => {
+    setSwitchFlow("compare");
+    setSelectedTariff(null);
+    setSwitchStep(0);
+    setScreen("switchFlow");
+  };
+
+  const handleSelectTariff = (tariff) => {
+    setSelectedTariff(tariff);
+    setSwitchFlow("detail");
+  };
+
+  const handleConfirmSwitch = () => {
+    setSwitchFlow("switching");
+    setSwitchStep(0);
+    let step = 0;
+    const interval = setInterval(() => {
+      step++;
+      if (step >= switchSteps.length) {
+        clearInterval(interval);
+        setTimeout(() => {
+          setSwitchFlow("done");
+          setShowConfetti(true);
+          setSwitchedServices(prev => [...prev, "energy"]);
+          setTimeout(() => setShowConfetti(false), 2000);
+        }, 600);
+      } else {
+        setSwitchStep(step);
+      }
+    }, 1200);
+  };
+
+  const toggleSetting = (label) => {
+    const cycles = {
+      "Notifications": ["On", "Off"],
+      "Auto-switching": ["Off", "On"],
+      "Budget alerts": ["\u00A3600/mo", "\u00A3500/mo", "\u00A3700/mo", "Off"],
+      "Data sharing": ["Essential only", "Full", "Off"],
+    };
+    setSettingsState(prev => {
+      const options = cycles[label] || ["On", "Off"];
+      const idx = options.indexOf(prev[label]);
+      return { ...prev, [label]: options[(idx + 1) % options.length] };
+    });
+  };
+
+  const sendChat = () => {
+    if (!chatInput.trim()) return;
+    const msg = chatInput;
+    setChatHistory(prev => [...prev, { role: "user", text: msg }]);
+    setChatInput("");
+    setTimeout(() => {
+      const lower = msg.toLowerCase();
+      let reply = "Let me look into that for you. Based on your household data, I can help optimise this.";
+      if (lower.includes("energy") || lower.includes("switch") || lower.includes("tariff")) {
+        reply = "I\u2019ve been monitoring your energy usage. Your Octopus fixed-rate ends in 23 days. Their Agile tariff would save you \u00A338/month. Want me to show you a comparison?";
+      } else if (lower.includes("save") || lower.includes("saving")) {
+        reply = "I\u2019ve found \u00A379/month in potential savings across energy, council tax, and unused subscriptions. Want me to walk you through each one?";
+      } else if (lower.includes("insurance")) {
+        reply = "Your home insurance auto-renews in August. I\u2019ll start comparing the market 8 weeks before and flag any better deals.";
+      }
+      setChatHistory(prev => [...prev, { role: "jay", text: reply }]);
+    }, 800);
+  };
+
+  /* ── Splash ── */
+  if (!booted) {
+    return (
+      <div style={{ background: t.bg, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, animation: "fadeInSimple 0.6s ease-out" }}>
+        <JayAvatar size={72} />
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 28, fontWeight: 800, color: t.purple }}>Jay</span>
+          <span style={{ fontSize: 22, color: t.coral }}>{"\u2728"}</span>
+        </div>
+        <div style={{ fontSize: 13, color: t.textMuted, letterSpacing: "0.05em" }}>Home Management</div>
+        <div style={{ marginTop: 20, width: 32, height: 32, border: `3px solid ${t.purpleBorder}`, borderTopColor: t.purple, borderRadius: "50%" }} className="spinner" />
+      </div>
+    );
+  }
+
+  /* ── Header ── */
+  const renderHeader = () => {
+    const currentScreen = switchFlow ? "switchFlow" : screen;
+    return (
+    <div style={{ padding: "12px 20px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div>
+        <div style={{ fontSize: 11, color: t.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 1, fontWeight: 600, borderBottom: `2px solid ${t.coral}`, display: "inline-block", paddingBottom: 1 }}>Just Move In</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: t.textPrimary, letterSpacing: "-0.02em", marginTop: 2 }}>
+          {currentScreen === "dashboard" || currentScreen === "jay" ? "Home Manager" : currentScreen === "service" ? selectedService?.name : currentScreen === "switchFlow" ? "Energy Switch" : currentScreen === "activity" ? "Activity" : currentScreen === "review" ? "Annual Review" : "Settings"}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        {currentScreen !== "dashboard" && currentScreen !== "jay" && (
+          <button onClick={() => { if (switchFlow) { if (switchFlow === "detail") { setSwitchFlow("compare"); return; } if (switchFlow === "done" || switchFlow === "switching") { setSwitchFlow(null); setScreen("dashboard"); return; } setSwitchFlow(null); setScreen("service"); return; } setServiceFlow(null); setScreen("dashboard"); }} style={{ background: t.bgSoft, border: `1px solid ${t.border}`, color: t.textSecondary, borderRadius: 10, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{"\u2190"} Back</button>
+        )}
+        <button onClick={() => { if (screen === "jay" && !switchFlow) { setScreen("dashboard"); } else { setScreen("jay"); setSwitchFlow(null); setServiceFlow(null); } }} style={{
+          background: screen === "jay" && !switchFlow ? t.purple : t.purpleBg,
+          border: `1px solid ${screen === "jay" && !switchFlow ? t.purple : t.purpleBorder}`,
+          color: screen === "jay" && !switchFlow ? "#fff" : t.purple,
+          borderRadius: 22, padding: "6px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+          display: "flex", alignItems: "center", gap: 6,
+        }}>
+          <span style={{ color: screen === "jay" && !switchFlow ? "#fff" : t.coral, fontSize: 14 }}>{"\u2728"}</span> Jay
+          {activeAlerts.length > 0 && screen !== "jay" && (
+            <span className="badge-pulse" style={{ background: t.coral, color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "1px 6px", lineHeight: 1.4 }}>{activeAlerts.length}</span>
+          )}
+        </button>
+      </div>
+    </div>
+  );};
+
+  /* ── Dashboard ── */
+  const renderDashboard = () => (
+    <div style={{ padding: "16px 20px 80px", flex: 1, animation: "fadeIn 0.4s ease-out" }}>
+      {/* Summary Card */}
+      <div style={{ background: t.bgSoft, border: `1px solid ${t.purpleBorder}`, borderRadius: 20, padding: 20, marginBottom: 16, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: "50%", background: `${t.purple}08`, border: `1px solid ${t.purple}12` }} />
+        <div style={{ fontSize: 11, color: t.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4, fontWeight: 600 }}>Monthly household spend</div>
+        <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.03em", color: t.textPrimary }}>{"\u00A3"}{totalMonthly}</div>
+        <div style={{ fontSize: 13, color: t.textSecondary, marginBottom: 16 }}>across {services.length} services</div>
+        {(() => {
+          const lockedIn = switchedServices.reduce((s, id) => s + (services.find(x => x.id === id)?.saving || 0), 0);
+          const remaining = totalSaving - lockedIn;
+          return (
+            <div>
+              {lockedIn > 0 && (
+                <div style={{ background: t.greenBg, border: `1px solid ${t.greenBorder}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", animation: "fadeIn 0.4s ease-out" }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: t.green, fontWeight: 600, marginBottom: 2 }}>{"\u2713"} Savings locked in</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: t.green }}>{"\u00A3"}{lockedIn}<span style={{ fontSize: 13, fontWeight: 500 }}>/mo</span></div>
+                  </div>
+                  <div style={{ fontSize: 12, color: t.green, fontWeight: 700 }}>{"\u00A3"}{lockedIn * 12}/yr</div>
+                </div>
+              )}
+              {remaining > 0 && (
+                <div style={{ background: t.coralLight, border: `1px solid ${t.coralBorder}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: t.coral, fontWeight: 600, marginBottom: 2 }}>
+                      <JayBadge size="sm" /> {lockedIn > 0 ? "more savings available" : "found savings"}
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: t.coral }}>{"\u00A3"}{remaining}<span style={{ fontSize: 13, fontWeight: 500 }}>/mo</span></div>
+                  </div>
+                  <button onClick={() => setScreen("jay")} style={{ background: t.coral, color: "#fff", border: "none", borderRadius: 10, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Review</button>
+                </div>
+              )}
+              {remaining === 0 && lockedIn > 0 && (
+                <div style={{ background: t.purpleBg, border: `1px solid ${t.purpleBorder}`, borderRadius: 12, padding: "10px 14px", textAlign: "center", animation: "fadeIn 0.4s ease-out" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: t.purple }}>{"\u2728"} All savings unlocked! Jay is monitoring for new opportunities.</div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {(() => {
+        const liveActionCount = services.filter(s => (s.status === "action" || s.status === "info") && !switchedServices.includes(s.id)).length;
+        return liveActionCount > 0 ? (
+          <div style={{ fontSize: 11, color: t.coral, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", background: t.coralLight, fontSize: 10, fontWeight: 800, color: t.coral }}>{liveActionCount}</span>
+            need attention
+          </div>
+        ) : null;
+      })()}
+
+      {/* Service Cards — sorted: action first, then info, then ok */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {[...services].sort((a, b) => {
+          const order = { action: 0, info: 1, ok: 2 };
+          const aStatus = switchedServices.includes(a.id) ? "ok" : a.status;
+          const bStatus = switchedServices.includes(b.id) ? "ok" : b.status;
+          return (order[aStatus] || 2) - (order[bStatus] || 2);
+        }).map(s => {
+          const isSwitched = switchedServices.includes(s.id);
+          return (
+          <div key={s.id} onClick={() => goService(s.id)}
+            style={{ background: t.bgCard, border: `1px solid ${!isSwitched && s.status !== "ok" ? (s.status === "action" ? t.coralBorder : t.amberBorder) : t.border}`, borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", transition: "all 0.2s ease", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div style={{ fontSize: 22, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", background: t.bgSoft, borderRadius: 12 }}>{s.icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: t.textPrimary }}>{s.name}</span>
+                <StatusBadge status={isSwitched ? "ok" : s.status} />
+              </div>
+              <div style={{ fontSize: 12, color: t.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.provider}</div>
+            </div>
+            <div style={{ textAlign: "right", flexShrink: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: t.textPrimary }}>{"\u00A3"}{s.monthly}</div>
+              {s.saving && !isSwitched && <div style={{ fontSize: 11, color: t.coral, fontWeight: 600 }}>save {"\u00A3"}{s.saving}</div>}
+              {isSwitched && s.saving && <div style={{ fontSize: 11, color: t.green, fontWeight: 600 }}>{"\u2212\u00A3"}{s.saving} {"\u2713"}</div>}
+            </div>
+          </div>
+        );})}
+      </div>
+    </div>
+  );
+
+  /* ── Jay Alerts Screen ── */
+  const renderJay = () => (
+    <div style={{ padding: "16px 20px 80px", flex: 1, animation: "fadeIn 0.4s ease-out" }}>
+      {activeAlerts.map(alert => (
+        <div key={alert.id} style={{ background: t.bgCard, border: `1px solid ${t.purpleBorder}`, borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.04)", animation: "slideUp 0.4s ease-out" }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <JayAvatar size={36} />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                <JayBadge />
+                <span style={{ fontSize: 11, color: t.textMuted }}>{alert.time}</span>
+              </div>
+              <div style={{ fontSize: 13, color: t.textPrimary, lineHeight: 1.6, marginBottom: 12 }}>{alert.message}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => {
+                  if (alert.targetService === "energy") { setSelectedService(services[0]); setScreen("service"); }
+                  else { goService(alert.targetService); }
+                }} style={{ background: t.coral, color: "#fff", border: "none", borderRadius: 10, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{alert.action}</button>
+                <button onClick={() => setDismissed(prev => [...prev, alert.id])} style={{ background: "transparent", color: t.textMuted, border: `1px solid ${t.border}`, borderRadius: 10, padding: "8px 16px", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>Dismiss</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+      {activeAlerts.length === 0 && (
+        <div style={{ textAlign: "center", padding: "40px 20px", color: t.textMuted }}>
+          <JayAvatar size={48} />
+          <div style={{ fontSize: 14, marginTop: 12 }}>No active alerts. Jay is monitoring your services.</div>
+        </div>
+      )}
+      {/* Chat */}
+      <div style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 16, padding: 14, marginTop: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: t.purple }}>Ask</span> <JayBadge />
+        </div>
+        <div ref={chatRef} style={{ maxHeight: 180, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+          {chatHistory.map((m, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", gap: 8, alignItems: "flex-end", animation: "fadeIn 0.3s ease-out" }}>
+              {m.role === "jay" && <JayAvatar size={24} />}
+              <div style={{
+                background: m.role === "user" ? t.purple : t.bgSoft,
+                color: m.role === "user" ? "#fff" : t.textPrimary,
+                borderRadius: m.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+                padding: "10px 14px", fontSize: 12, lineHeight: 1.5, maxWidth: "80%",
+                border: m.role === "jay" ? `1px solid ${t.border}` : "none",
+              }}>{m.text}</div>
+            </div>
+          ))}
+        </div>
+        {/* Suggestion chips — matches JustMoveIn's Ask Jay UI */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+          {[
+            { label: "Compare energy tariffs", action: () => { if (!switchedServices.includes("energy")) { setSelectedService(services[0]); setScreen("service"); startSwitchFlow(); } else { setChatHistory(prev => [...prev, { role: "user", text: "Compare energy tariffs" }, { role: "jay", text: "Great news \u2014 your energy switch is already done! You\u2019re saving \u00A338/month on the Agile tariff." }]); } }},
+            { label: "Show my savings", action: () => { setChatHistory(prev => [...prev, { role: "user", text: "Show my savings" }, { role: "jay", text: `You have \u00A3${totalSaving - switchedServices.reduce((s, id) => s + (services.find(x => x.id === id)?.saving || 0), 0)}/month in remaining savings to unlock. ${switchedServices.length > 0 ? `So far you\u2019ve locked in \u00A3${switchedServices.reduce((s, id) => s + (services.find(x => x.id === id)?.saving || 0), 0)}/month \u2014 nice work!` : "Let\u2019s start with energy \u2014 that\u2019s the biggest win."}` }]); }},
+            { label: "What can I do now?", action: () => { const remaining = services.filter(s => s.saving && !switchedServices.includes(s.id)); if (remaining.length > 0) { setChatHistory(prev => [...prev, { role: "user", text: "What can I do now?" }, { role: "jay", text: `You have ${remaining.length} action${remaining.length > 1 ? "s" : ""} available: ${remaining.map(s => s.name + " (\u00A3" + s.saving + "/mo)").join(", ")}. Want me to start with the biggest one?` }]); } else { setChatHistory(prev => [...prev, { role: "user", text: "What can I do now?" }, { role: "jay", text: "All caught up! I\u2019m monitoring your services and will alert you when something needs attention." }]); } }},
+          ].map((chip, i) => (
+            <button key={i} onClick={chip.action} style={{ background: "transparent", border: `1.5px solid ${t.coralBorder}`, borderRadius: 20, padding: "6px 12px", fontSize: 11, fontWeight: 600, color: t.textPrimary, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: "all 0.2s ease" }}>
+              <span style={{ color: t.coral, fontSize: 12 }}>{"\u21B3"}</span> {chip.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }}
+            placeholder="Ask me something..."
+            style={{ flex: 1, background: t.bgSoft, border: `1px solid ${t.border}`, borderRadius: 12, padding: "10px 14px", color: t.textPrimary, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
+          <button onClick={sendChat} style={{ background: t.purple, color: "#fff", border: "none", borderRadius: 12, padding: "10px 16px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>{"\u2192"}</button>
+        </div>
+        <div style={{ fontSize: 10, color: t.textMuted, textAlign: "center", marginTop: 6 }}>Jay is an AI and can make mistakes, please double check responses</div>
+      </div>
+    </div>
+  );
+
+  /* ── Service Detail ── */
+  const renderService = () => {
+    if (!selectedService) return null;
+    const isSwitched = switchedServices.includes(selectedService.id);
+    return (
+      <div style={{ padding: "16px 20px 80px", flex: 1, animation: "fadeIn 0.4s ease-out" }}>
+        <div style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 20, padding: 24, marginBottom: 16, textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+          <div style={{ fontSize: 44, marginBottom: 8 }}>{selectedService.icon}</div>
+          <div style={{ fontSize: 13, color: t.textSecondary, marginBottom: 4 }}>{selectedService.provider}</div>
+          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", color: t.textPrimary, marginBottom: 6 }}>{"\u00A3"}{selectedService.monthly}<span style={{ fontSize: 16, fontWeight: 500, color: t.textSecondary }}>/mo</span></div>
+          <StatusBadge status={isSwitched ? "ok" : selectedService.status} />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+          {[{ label: "Contract end", value: selectedService.contractEnd }, { label: "Usage", value: selectedService.usage }].map(stat => (
+            <div key={stat.label} style={{ background: t.bgSoft, border: `1px solid ${t.border}`, borderRadius: 14, padding: 14 }}>
+              <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 4, fontWeight: 600 }}>{stat.label}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary }}>{stat.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Jay insight */}
+        <div style={{ background: t.purpleBg, border: `1px solid ${t.purpleBorder}`, borderRadius: 16, padding: 16, display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 16 }}>
+          <JayAvatar size={32} />
+          <div>
+            <div style={{ marginBottom: 4 }}><JayBadge size="sm" /></div>
+            <div style={{ fontSize: 13, color: t.textSecondary, lineHeight: 1.6 }}>{selectedService.detail}</div>
+          </div>
+        </div>
+
+        {/* CTA for energy switch flow */}
+        {selectedService.id === "energy" && !isSwitched && (
+          <button onClick={startSwitchFlow} style={{ width: "100%", background: `linear-gradient(135deg, ${t.coral}, #F06040)`, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: `0 4px 12px ${t.coral}44`, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <span style={{ fontSize: 18 }}>{"\u2728"}</span> Let Jay find a better deal
+          </button>
+        )}
+
+        {/* Council Tax flow CTA */}
+        {selectedService.id === "council" && !isSwitched && !serviceFlow && (
+          <button onClick={() => setServiceFlow("council-check")} style={{ width: "100%", background: `linear-gradient(135deg, ${t.coral}, #F06040)`, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: `0 4px 12px ${t.coral}44`, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <span style={{ fontSize: 18 }}>{"\u2728"}</span> Check my eligibility
+          </button>
+        )}
+
+        {/* Council Tax — eligibility check */}
+        {serviceFlow === "council-check" && (
+          <div style={{ animation: "fadeIn 0.4s ease-out" }}>
+            <div style={{ background: t.purpleBg, border: `1px solid ${t.purpleBorder}`, borderRadius: 16, padding: 16, marginBottom: 12 }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
+                <JayAvatar size={28} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: t.purple }}>Eligibility check</span>
+              </div>
+              {[
+                { q: "Sole occupant over 18?", a: "Yes \u2014 eligible", ok: true },
+                { q: "Current band", a: "Band D", ok: true },
+                { q: "Discount applicable", a: "25% single-person", ok: true },
+              ].map((item, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < 2 ? `1px solid ${t.border}` : "none" }}>
+                  <span style={{ fontSize: 13, color: t.textSecondary }}>{item.q}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: item.ok ? t.green : t.red, background: item.ok ? t.greenBg : t.redBg, padding: "2px 10px", borderRadius: 8 }}>{item.a}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: t.greenBg, border: `1px solid ${t.greenBorder}`, borderRadius: 14, padding: 14, textAlign: "center", marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: t.green, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>You qualify!</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: t.green }}>{"\u00A3"}19/mo saved</div>
+              <div style={{ fontSize: 12, color: t.textSecondary }}>{"\u00A3"}228 per year back in your pocket</div>
+            </div>
+            <button onClick={() => {
+              setServiceFlow("council-applying");
+              setSubFlowStep(0);
+              const steps = ["Verifying your address", "Submitting discount application", "Confirming with Hackney Council"];
+              let step = 0;
+              const interval = setInterval(() => {
+                step++;
+                if (step >= steps.length) {
+                  clearInterval(interval);
+                  setTimeout(() => {
+                    setServiceFlow("council-done");
+                    setShowConfetti(true);
+                    setSwitchedServices(prev => [...prev, "council"]);
+                    setTimeout(() => setShowConfetti(false), 1500);
+                  }, 600);
+                } else { setSubFlowStep(step); }
+              }, 1000);
+            }} style={{ width: "100%", background: `linear-gradient(135deg, ${t.coral}, #F06040)`, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: `0 4px 12px ${t.coral}44`, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <span>{"\u2728"}</span> Apply for discount
+            </button>
+          </div>
+        )}
+
+        {/* Council Tax — applying */}
+        {serviceFlow === "council-applying" && (
+          <div style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 16, padding: 16, animation: "fadeIn 0.4s ease-out" }}>
+            <div style={{ textAlign: "center", marginBottom: 12 }}>
+              <JayAvatar size={40} />
+              <div style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, marginTop: 8 }}>Applying for your discount...</div>
+            </div>
+            {["Verifying your address", "Submitting discount application", "Confirming with Hackney Council"].map((step, i) => {
+              const isDone = i < subFlowStep;
+              const isActive = i === subFlowStep;
+              return (
+                <div key={i} style={{ display: "flex", gap: 12, alignItems: "center", padding: "8px 0" }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: isDone ? t.green : isActive ? t.purple : t.bgSoft, color: isDone || isActive ? "#fff" : t.textMuted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                    {isDone ? "\u2713" : isActive ? <span className="spinner" style={{ width: 12, height: 12, border: "2px solid #fff", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block" }} /> : (i + 1)}
+                  </div>
+                  <span style={{ fontSize: 13, color: isDone || isActive ? t.textPrimary : t.textMuted }}>{step}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Council Tax — done */}
+        {serviceFlow === "council-done" && (
+          <div style={{ textAlign: "center", animation: "fadeIn 0.5s ease-out" }}>
+            <CheckMark />
+            <div style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary, marginTop: 12 }}>Discount applied!</div>
+            <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 4, marginBottom: 12 }}>Hackney Council will update your bill within 5 working days.</div>
+            <div style={{ background: t.greenBg, border: `1px solid ${t.greenBorder}`, borderRadius: 14, padding: 14 }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: t.green }}>{"\u00A3"}19/mo saved</div>
+            </div>
+          </div>
+        )}
+
+        {/* Subscriptions flow CTA */}
+        {selectedService.id === "subscriptions" && !isSwitched && !serviceFlow && (
+          <button onClick={() => setServiceFlow("subs-audit")} style={{ width: "100%", background: `linear-gradient(135deg, ${t.coral}, #F06040)`, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: `0 4px 12px ${t.coral}44`, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <span style={{ fontSize: 18 }}>{"\u2728"}</span> Audit my subscriptions
+          </button>
+        )}
+
+        {/* Subscriptions — audit */}
+        {serviceFlow === "subs-audit" && (
+          <div style={{ animation: "fadeIn 0.4s ease-out" }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
+              <JayAvatar size={28} />
+              <div>
+                <JayBadge size="sm" />
+                <span style={{ fontSize: 12, color: t.textSecondary, marginLeft: 6 }}>I scanned your 7 active subscriptions</span>
+              </div>
+            </div>
+            {[
+              { name: "Adobe Creative Cloud", cost: 17, days: 68, status: "unused" },
+              { name: "Sky Sports", cost: 5, days: 45, status: "unused" },
+              { name: "Netflix", cost: 13, days: 0, status: "active" },
+              { name: "Spotify", cost: 11, days: 0, status: "active" },
+              { name: "Disney+", cost: 8, days: 0, status: "active" },
+              { name: "iCloud Storage", cost: 3, days: 0, status: "active" },
+              { name: "The Athletic", cost: 6, days: 12, status: "active" },
+            ].map((sub, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${t.borderLight}`, animation: `slideUp 0.3s ease-out ${i * 0.05}s both` }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: t.textPrimary }}>{sub.name}</div>
+                  {sub.status === "unused" && <div style={{ fontSize: 11, color: t.red, fontWeight: 600 }}>No usage in {sub.days} days</div>}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary }}>{"\u00A3"}{sub.cost}/mo</span>
+                  {sub.status === "unused" ? (
+                    <span style={{ background: t.redBg, color: t.red, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6 }}>Unused</span>
+                  ) : (
+                    <span style={{ background: t.greenBg, color: t.green, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6 }}>Active</span>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div style={{ background: t.coralLight, border: `1px solid ${t.coralBorder}`, borderRadius: 14, padding: 14, marginTop: 12, marginBottom: 12, textAlign: "center" }}>
+              <div style={{ fontSize: 11, color: t.coral, fontWeight: 700, textTransform: "uppercase", marginBottom: 4 }}>Cancel unused subs</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: t.coral }}>{"\u00A3"}22/mo saved</div>
+              <div style={{ fontSize: 12, color: t.textSecondary }}>Adobe Creative Cloud + Sky Sports</div>
+            </div>
+            <button onClick={() => {
+              setServiceFlow("subs-cancelling");
+              setSubFlowStep(0);
+              let step = 0;
+              const interval = setInterval(() => {
+                step++;
+                if (step >= 2) {
+                  clearInterval(interval);
+                  setTimeout(() => {
+                    setServiceFlow("subs-done");
+                    setShowConfetti(true);
+                    setSwitchedServices(prev => [...prev, "subscriptions"]);
+                    setTimeout(() => setShowConfetti(false), 1500);
+                  }, 600);
+                } else { setSubFlowStep(step); }
+              }, 1200);
+            }} style={{ width: "100%", background: `linear-gradient(135deg, ${t.coral}, #F06040)`, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: `0 4px 12px ${t.coral}44`, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <span>{"\u2728"}</span> Cancel unused subscriptions
+            </button>
+          </div>
+        )}
+
+        {/* Subscriptions — cancelling */}
+        {serviceFlow === "subs-cancelling" && (
+          <div style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 16, padding: 16, animation: "fadeIn 0.4s ease-out" }}>
+            <div style={{ textAlign: "center", marginBottom: 12 }}>
+              <JayAvatar size={40} />
+              <div style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary, marginTop: 8 }}>Cancelling unused subscriptions...</div>
+            </div>
+            {["Cancelling Adobe Creative Cloud (\u00A317/mo)", "Cancelling Sky Sports (\u00A35/mo)"].map((step, i) => {
+              const isDone = i < subFlowStep;
+              const isActive = i === subFlowStep;
+              return (
+                <div key={i} style={{ display: "flex", gap: 12, alignItems: "center", padding: "8px 0" }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: isDone ? t.green : isActive ? t.purple : t.bgSoft, color: isDone || isActive ? "#fff" : t.textMuted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                    {isDone ? "\u2713" : isActive ? <span className="spinner" style={{ width: 12, height: 12, border: "2px solid #fff", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block" }} /> : (i + 1)}
+                  </div>
+                  <span style={{ fontSize: 13, color: isDone || isActive ? t.textPrimary : t.textMuted }}>{step}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Subscriptions — done */}
+        {serviceFlow === "subs-done" && (
+          <div style={{ textAlign: "center", animation: "fadeIn 0.5s ease-out" }}>
+            <CheckMark />
+            <div style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary, marginTop: 12 }}>Subscriptions cancelled!</div>
+            <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 4, marginBottom: 12 }}>Both cancellations confirmed. No more charges from next billing cycle.</div>
+            <div style={{ background: t.greenBg, border: `1px solid ${t.greenBorder}`, borderRadius: 14, padding: 14 }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: t.green }}>{"\u00A3"}22/mo saved</div>
+              <div style={{ fontSize: 12, color: t.textSecondary }}>{"\u00A3"}264 per year</div>
+            </div>
+          </div>
+        )}
+
+        {isSwitched && selectedService.saving && (
+          <div style={{ background: t.greenBg, border: `1px solid ${t.greenBorder}`, borderRadius: 14, padding: 16, textAlign: "center", animation: "fadeIn 0.4s ease-out" }}>
+            <span style={{ color: t.green, fontWeight: 700, fontSize: 14 }}>{"\u2713"} Jay is handling this. Saving {"\u00A3"}{selectedService.saving}/month.</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /* ══════════════════════════════════════════════════════
+     THE SANDY MAGIC: Energy Switch Flow
+     ══════════════════════════════════════════════════════ */
+  const renderSwitchFlow = () => {
+    if (!switchFlow) return null;
+
+    /* Step 1: Market Comparison */
+    if (switchFlow === "compare") {
+      return (
+        <div style={{ padding: "16px 20px 80px", flex: 1, animation: "fadeIn 0.4s ease-out" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 16 }}>
+            <JayAvatar size={36} />
+            <div>
+              <JayBadge />
+              <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 2 }}>I compared the market based on your 287 kWh usage.</div>
+            </div>
+          </div>
+
+          {/* Current tariff */}
+          <div style={{ background: t.bgSoft, border: `1px solid ${t.border}`, borderRadius: 14, padding: 14, marginBottom: 12, opacity: 0.7 }}>
+            <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Current tariff</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>Octopus Fixed Rate</div>
+                <div style={{ fontSize: 12, color: t.textSecondary }}>Expires in 23 days</div>
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: t.textPrimary }}>{"\u00A3"}142<span style={{ fontSize: 12, fontWeight: 500, color: t.textSecondary }}>/mo</span></div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 11, color: t.purple, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Better options available</div>
+
+          {/* Tariff cards */}
+          {tariffComparison.map((tariff, i) => (
+            <div key={i} onClick={() => handleSelectTariff(tariff)}
+              style={{
+                background: t.bgCard,
+                border: tariff.recommended ? `2px solid ${t.coral}` : `1px solid ${t.border}`,
+                borderRadius: 16, padding: 16, marginBottom: 10, cursor: "pointer",
+                boxShadow: tariff.recommended ? `0 4px 12px ${t.coral}22` : "0 1px 3px rgba(0,0,0,0.04)",
+                animation: `slideUp 0.4s ease-out ${i * 0.1}s both`,
+                position: "relative", overflow: "hidden",
+              }}>
+              {tariff.recommended && (
+                <div style={{ position: "absolute", top: 0, right: 0, background: t.coral, color: "#fff", fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: "0 14px 0 8px" }}>
+                  <span style={{ marginRight: 3 }}>{"\u2728"}</span>Jay's pick
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: t.textPrimary }}>{tariff.name}</div>
+                  <div style={{ fontSize: 12, color: t.textSecondary }}>{tariff.provider}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary }}>{"\u00A3"}{tariff.monthly}<span style={{ fontSize: 12, fontWeight: 500, color: t.textSecondary }}>/mo</span></div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ background: t.greenBg, color: t.green, borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>Save {"\u00A3"}{tariff.saving}/mo</span>
+                <span style={{ background: t.bgSoft, color: t.textSecondary, borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{"\u2605"} {tariff.rating}</span>
+                {tariff.green && <span style={{ background: t.greenBg, color: t.green, borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{"\uD83C\uDF3F"} Green</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    /* Step 2: Tariff Detail / Confirm */
+    if (switchFlow === "detail" && selectedTariff) {
+      return (
+        <div style={{ padding: "16px 20px 80px", flex: 1, animation: "fadeIn 0.4s ease-out" }}>
+          <div style={{ background: t.bgCard, border: `2px solid ${t.coral}`, borderRadius: 20, padding: 24, textAlign: "center", marginBottom: 16, boxShadow: `0 4px 16px ${t.coral}18` }}>
+            <div style={{ fontSize: 11, color: t.coral, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
+              <span style={{ marginRight: 4 }}>{"\u2728"}</span>Jay's recommendation
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, marginBottom: 4 }}>{selectedTariff.name}</div>
+            <div style={{ fontSize: 13, color: t.textSecondary, marginBottom: 16 }}>{selectedTariff.provider}</div>
+
+            <div style={{ display: "flex", justifyContent: "center", gap: 24, marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 2 }}>New monthly</div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: t.purple }}>{"\u00A3"}{selectedTariff.monthly}</div>
+              </div>
+              <div style={{ width: 1, background: t.border }} />
+              <div>
+                <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 2 }}>You save</div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: t.green }}>{"\u00A3"}{selectedTariff.saving}</div>
+                <div style={{ fontSize: 11, color: t.green, fontWeight: 600 }}>per month</div>
+              </div>
+            </div>
+
+            <div style={{ background: t.amberBg, border: `1px solid ${t.amberBorder}`, borderRadius: 12, padding: 12, textAlign: "center" }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: t.amber }}>{"\u00A3"}{selectedTariff.saving * 12}<span style={{ fontSize: 13, fontWeight: 500 }}> saved per year</span></div>
+            </div>
+          </div>
+
+          {/* What Jay will do */}
+          <div style={{ background: t.purpleBg, border: `1px solid ${t.purpleBorder}`, borderRadius: 16, padding: 16, marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <JayAvatar size={28} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: t.purple }}>What Jay will do</span>
+            </div>
+            {["Contact your current provider", "Confirm new Agile tariff with Octopus", "Schedule switch for 20 April (no supply gap)", "Update your direct debit automatically"].map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: "6px 0" }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: t.purple, color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</div>
+                <span style={{ fontSize: 13, color: t.textPrimary }}>{step}</span>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={handleConfirmSwitch} style={{ width: "100%", background: `linear-gradient(135deg, ${t.coral}, #F06040)`, color: "#fff", border: "none", borderRadius: 14, padding: "18px", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: `0 4px 16px ${t.coral}44`, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <span style={{ fontSize: 18 }}>{"\u2728"}</span> Confirm switch {"\u2014"} Save {"\u00A3"}{selectedTariff.saving}/mo
+          </button>
+          <button onClick={() => setSwitchFlow("compare")} style={{ width: "100%", background: "transparent", color: t.textMuted, border: "none", padding: "12px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
+            {"\u2190"} Compare other options
+          </button>
+        </div>
+      );
+    }
+
+    /* Step 3: Switching in Progress */
+    if (switchFlow === "switching") {
+      return (
+        <div style={{ padding: "16px 20px 80px", flex: 1, animation: "fadeIn 0.4s ease-out" }}>
+          <div style={{ textAlign: "center", marginBottom: 24 }}>
+            <JayAvatar size={56} />
+            <div style={{ fontSize: 16, fontWeight: 700, color: t.textPrimary, marginTop: 12 }}>Jay is switching your energy</div>
+            <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 4 }}>This usually takes a few seconds...</div>
+          </div>
+
+          <div style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 20, padding: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+            {switchSteps.map((step, i) => {
+              const isActive = i === switchStep;
+              const isDone = i < switchStep;
+              return (
+                <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "12px 0", borderBottom: i < switchSteps.length - 1 ? `1px solid ${t.borderLight}` : "none", animation: isActive ? "fadeIn 0.4s ease-out" : "none" }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: isDone ? t.green : isActive ? t.purple : t.bgSoft,
+                    color: isDone || isActive ? "#fff" : t.textMuted,
+                    fontSize: 12, fontWeight: 700,
+                    transition: "all 0.3s ease",
+                  }}>
+                    {isDone ? "\u2713" : isActive ? <span className="spinner" style={{ width: 14, height: 14, border: "2px solid #fff", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block" }} /> : (i + 1)}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: isDone || isActive ? t.textPrimary : t.textMuted }}>{step.label}</div>
+                    {(isDone || isActive) && <div style={{ fontSize: 12, color: isDone ? t.green : t.purple, fontWeight: 500, marginTop: 2 }}>{step.detail}</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    /* Step 4: Done! */
+    if (switchFlow === "done") {
+      return (
+        <div style={{ padding: "16px 20px 80px", flex: 1, animation: "fadeIn 0.5s ease-out", textAlign: "center" }}>
+          <div style={{ marginTop: 20, marginBottom: 20, animation: "countUp 0.6s ease-out" }}>
+            <CheckMark />
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: t.textPrimary, marginBottom: 6 }}>Switch complete!</div>
+          <div style={{ fontSize: 14, color: t.textSecondary, marginBottom: 24 }}>Jay handled everything for you</div>
+
+          <div style={{ background: t.greenBg, border: `1px solid ${t.greenBorder}`, borderRadius: 20, padding: 24, marginBottom: 16, animation: "slideUp 0.5s ease-out 0.2s both" }}>
+            <div style={{ fontSize: 11, color: t.green, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Your new deal</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, marginBottom: 4 }}>{selectedTariff ? selectedTariff.name : ""}</div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 16 }}>
+              <div>
+                <div style={{ fontSize: 11, color: t.textMuted }}>New monthly</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: t.textPrimary }}>{"\u00A3"}{selectedTariff ? selectedTariff.monthly : ""}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: t.textMuted }}>Annual saving</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: t.green }}>{"\u00A3"}{selectedTariff ? selectedTariff.saving * 12 : ""}</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 16, padding: 16, marginBottom: 16, textAlign: "left", animation: "slideUp 0.5s ease-out 0.4s both" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary, marginBottom: 10 }}>What happened</div>
+            {switchSteps.map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: "5px 0" }}>
+                <span style={{ color: t.green, fontSize: 14, fontWeight: 700 }}>{"\u2713"}</span>
+                <span style={{ fontSize: 13, color: t.textSecondary }}>{step.label}</span>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={() => { setSwitchFlow(null); setServiceFlow(null); setScreen("dashboard"); }} style={{ width: "100%", background: t.purple, color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+            Back to Home Manager
+          </button>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  /* ── Activity ── */
+  const renderActivity = () => (
+    <div style={{ padding: "16px 20px 80px", flex: 1, animation: "fadeIn 0.4s ease-out" }}>
+      {[
+        { time: "Today", items: [
+          { icon: "\u26A1", text: "Jay flagged: Energy contract ending in 23 days", color: t.red, serviceId: "energy" },
+          { icon: "\uD83D\uDCF1", text: "2 unused subscriptions detected", color: t.amber, serviceId: "subscriptions" },
+        ]},
+        { time: "Yesterday", items: [
+          { icon: "\uD83C\uDFDB\uFE0F", text: "Council tax discount opportunity found", color: t.amber, serviceId: "council" },
+        ]},
+        { time: "Last week", items: [
+          { icon: "\uD83D\uDCE1", text: "Broadband usage analysed \u2014 no action needed", color: t.green, serviceId: "broadband" },
+          { icon: "\uD83C\uDFE0", text: "Insurance renewal date logged (Aug 2025)", color: t.green, serviceId: "insurance" },
+          { icon: "\uD83D\uDCA7", text: "Water usage normal \u2014 no anomalies", color: t.green, serviceId: "water" },
+        ]},
+      ].map(group => (
+        <div key={group.time} style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, color: t.textMuted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8, fontWeight: 600 }}>{group.time}</div>
+          {group.items.map((item, i) => (
+            <div key={i} onClick={() => goService(item.serviceId)} style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
+              <span style={{ fontSize: 16 }}>{item.icon}</span>
+              <span style={{ fontSize: 13, color: t.textSecondary, flex: 1 }}>{item.text}</span>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color }} />
+            </div>
+          ))}
+        </div>
+      ))}
+      <button onClick={() => setScreen("review")} style={{ width: "100%", background: t.purpleBg, border: `1px solid ${t.purpleBorder}`, borderRadius: 16, padding: "16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+        <JayAvatar size={36} />
+        <div style={{ textAlign: "left" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>Your Annual Review</div>
+          <div style={{ fontSize: 12, color: t.purple, fontWeight: 600 }}>See what Jay saved you this year {"\u2192"}</div>
+        </div>
+      </button>
+    </div>
+  );
+
+  /* ── Annual Review ── */
+  const renderReview = () => (
+    <div style={{ padding: "16px 20px 80px", flex: 1, animation: "fadeIn 0.4s ease-out" }}>
+      <div style={{ textAlign: "center", padding: "24px 0", background: `linear-gradient(180deg, ${t.purpleBg}, transparent)`, borderRadius: 20, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: t.purple, letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>Your Year With Jay</div>
+        <div style={{ fontSize: 48, fontWeight: 800, color: t.purple, letterSpacing: "-0.03em" }}>{"\u00A3"}482</div>
+        <div style={{ fontSize: 14, color: t.textSecondary }}>saved across your household</div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+        {[{ num: "7", label: "Actions taken" }, { num: "5", label: "Services managed" }, { num: "12", label: "Alerts sent" }].map(s => (
+          <div key={s.label} style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 14, padding: "14px 8px", textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: t.purple }}>{s.num}</div>
+            <div style={{ fontSize: 10, color: t.textSecondary, marginTop: 2 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 16, padding: 16, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, color: t.textPrimary }}>Savings breakdown</div>
+        {[
+          { name: "Energy renegotiation", amount: "\u00A3228", color: t.purple },
+          { name: "Council tax correction", amount: "\u00A3180", color: t.green },
+          { name: "Broadband switch", amount: "\u00A3156", color: t.purple },
+          { name: "Unused sub cancelled", amount: "\u00A348", color: t.amber },
+        ].map(item => (
+          <div key={item.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${t.borderLight}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color }} />
+              <span style={{ fontSize: 13, color: t.textSecondary }}>{item.name}</span>
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: item.color }}>{item.amount}</span>
+          </div>
+        ))}
+        <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 12, marginTop: 4 }}>
+          <span style={{ fontSize: 13, color: t.textSecondary }}>Subscription cost</span>
+          <span style={{ fontSize: 13, color: t.textMuted }}>{"\u2212\u00A3"}96</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 10, marginTop: 8, borderTop: `2px solid ${t.purple}` }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: t.textPrimary }}>Net benefit</span>
+          <span style={{ fontSize: 14, fontWeight: 800, color: t.green }}>+{"\u00A3"}386</span>
+        </div>
+      </div>
+      <div style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 16, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: t.textPrimary }}>Coming up in year 2</div>
+        {[
+          { month: "Feb", desc: "Insurance renewal", color: t.amber },
+          { month: "Jun", desc: "Energy contract ends", color: t.coral },
+          { month: "Sep", desc: "Water bill review", color: t.textSecondary },
+        ].map(item => (
+          <div key={item.month} style={{ display: "flex", gap: 12, alignItems: "center", padding: "8px 0" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: item.color, width: 28 }}>{item.month}</span>
+            <span style={{ fontSize: 13, color: t.textSecondary }}>{item.desc}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  /* ── Settings ── */
+  const renderSettings = () => (
+    <div style={{ padding: "16px 20px 80px", flex: 1, animation: "fadeIn 0.4s ease-out" }}>
+      {[
+        { label: "Notifications", desc: "Jay alerts and reminders" },
+        { label: "Auto-switching", desc: "Let Jay switch without approval" },
+        { label: "Budget alerts", desc: "Alert if spend exceeds target" },
+        { label: "Data sharing", desc: "Share usage data with Jay" },
+      ].map(setting => (
+        <div key={setting.label} onClick={() => toggleSetting(setting.label)} style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, color: t.textPrimary }}>{setting.label}</div>
+            <div style={{ fontSize: 12, color: t.textSecondary }}>{setting.desc}</div>
+          </div>
+          <span style={{ fontSize: 13, color: t.purple, fontWeight: 700, background: t.purpleBg, padding: "4px 12px", borderRadius: 8 }}>{settingsState[setting.label]}</span>
+        </div>
+      ))}
+      <div style={{ marginTop: 24, padding: 16, textAlign: "center" }}>
+        <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 4 }}>
+          <JayBadge size="sm" /> Home Management
+        </div>
+        <div style={{ fontSize: 11, color: t.textMuted }}>v1.0 {"\u00B7"} Powered by Just Move In</div>
+      </div>
+    </div>
+  );
+
+  /* ── Render ── */
+  return (
+    <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif", background: t.bg, height: "100%", color: t.textPrimary, display: "flex", flexDirection: "column", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
+      {showConfetti && <Confetti />}
+
+      {/* Jay notification toast */}
+      {showToast && !switchedServices.includes("energy") && screen === "dashboard" && (
+        <div onClick={() => { setShowToast(false); goService("energy"); }}
+          style={{
+            position: "absolute", top: 58, left: 16, right: 16, zIndex: 80,
+            background: t.bgCard, border: `1px solid ${t.coralBorder}`,
+            borderRadius: 14, padding: "12px 14px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+            display: "flex", gap: 10, alignItems: "center", cursor: "pointer",
+            animation: "toastSlideIn 4.4s ease-in-out forwards",
+          }}>
+          <JayAvatar size={32} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: t.textPrimary }}>{"\u26A1"} Energy contract expires in 23 days</div>
+            <div style={{ fontSize: 11, color: t.coral, fontWeight: 600 }}>Tap to save {"\u00A3"}38/month {"\u2192"}</div>
+          </div>
+        </div>
+      )}
+
+      {renderHeader()}
+
+      {switchFlow ? renderSwitchFlow() : (
+        screen === "dashboard" ? renderDashboard() :
+        screen === "jay" ? renderJay() :
+        screen === "service" ? renderService() :
+        screen === "activity" ? renderActivity() :
+        screen === "review" ? renderReview() :
+        screen === "settings" ? renderSettings() : null
+      )}
+
+      {/* Bottom nav */}
+      <div style={{ position: "sticky", bottom: 0, background: `${t.bg}F2`, backdropFilter: "blur(12px)", borderTop: `1px solid ${t.border}`, display: "flex", padding: "10px 0 24px", zIndex: 50 }}>
+        {[{ label: "Home", icon: "\u2302", id: "dashboard" }, { label: "Activity", icon: "\u25CE", id: "activity" }, { label: "Settings", icon: "\u2699", id: "settings" }].map(tab => {
+          const isActive = !switchFlow && (screen === tab.id || (tab.id === "dashboard" && (screen === "service" || screen === "jay")));
+          return (
+            <button key={tab.id} onClick={() => { setScreen(tab.id); setSwitchFlow(null); setServiceFlow(null); }}
+              style={{ flex: 1, background: "transparent", border: "none", color: isActive ? t.purple : t.textMuted, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", fontFamily: "inherit" }}>
+              <span style={{ fontSize: 18 }}>{tab.icon}</span>
+              <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 400 }}>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
+</script>
+</body>
+</html>
